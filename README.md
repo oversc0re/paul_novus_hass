@@ -18,3 +18,5 @@ It can be easily adopted to read system time, total running time and a few other
 Next challenge is to login to the 485 bus (as a display) to be able to control the unit. The login procedure is partially documented but after announcing presence a response to master has to be given where contents are yet unknown.
 
 Once control will be functional, a simple HASS interface will be developed on top. 
+
+Some help is highly appreciated :)
