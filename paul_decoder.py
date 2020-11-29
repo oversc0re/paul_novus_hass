@@ -5,18 +5,19 @@ import struct
 import time
 import sys
 import threading
-
-log.basicConfig(
-	stream=sys.stdout,
-	format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
-	level=log.DEBUG,
-	datefmt='%S')
-
 # Set display list to true to enable display of aggregated list of unique commands sent from the unit. (Requires TKinter)
+
 display_list = False
 
 if (display_list):
 	import tkinter
+
+log.basicConfig(
+	stream=sys.stdout,
+	format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
+	level=log.INFO,
+	datefmt='%S')
+
 
 
 def crc16_ccitt(crc, data): 
@@ -45,6 +46,7 @@ class Paul():
 		self.__frame = {}
 		self.__ask_data = b'\x00\x02\x03'
 		self.__ping_data =b'\x41\x00\x00'
+		self.__temp_keys = ['T1','T2','T3','T4']
 		self._ser = serial_handle
 		self._frames_list = [{}]
 		self._start_time = time.time()
@@ -52,7 +54,7 @@ class Paul():
 		self.filter_time_days = 0
 		self.temp = []
 		self.bypass = 0
-
+		self.status = {}
 
 	def __read(self, bytes_to_read):
 		r = self._ser.read(bytes_to_read)
@@ -92,15 +94,24 @@ class Paul():
 
 	def __extract_temp(self):
 		fd = self.__frame["data"]
-		self.temp = [(fd[4]<<8)+fd[5], (fd[8]<<8)+fd[9], (fd[12]<<8)+fd[13], (fd[16]<<8)+fd[17]]
+
+		# reshape string to be able to decode temps
+		tempstr = fd[5:7]+fd[9:11]+fd[13:15]+fd[17:19]
+		#self.temp = [(fd[6]<<8)+fd[5], (fd[10]<<8)+fd[9], (fd[14]<<8)+fd[13], (fd[18]<<8)+fd[17]]
+		tmptemp = list(struct.unpack('<hhhh', tempstr))
+		self.temp = map(lambda x: x/10, tmptemp)
+		jsontemp = dict(zip(self.__temp_keys, self.temp))
+		self.status.update(jsontemp)
 		# print bypass here as the bypass state is transmitted far too oftern
-		log.info("Temps: %s, Bypass: %d, Replace filter in %d days" % (str(self.temp), self.bypass, self.filter_time_days))
+		#log.info("Temps: %s, Bypass: %d, Replace filter in %d days" % (str(self.temp), self.bypass, self.filter_time_days))
 
 	def __extract_bypass(self):
 		self.bypass = self.__frame["data"][2] >> 4
+		self.status['bypass'] = self.bypass
 
 	def __extract_filter_time(self):
 		self.filter_time_days = self.__frame["data"][25] | (self.__frame["data"][26] << 8)
+		self.status['replace_filter'] = self.filter_time_days
 
 	def __build_frame(self, cmd, data, adr=None, dataLen=None):
 			if not adr:
@@ -313,8 +324,8 @@ def paul():
 # 	root.after(200, check_gui_update)
 #
 
-x = threading.Thread(target=paul, args=())
-x.start()
+#x = threading.Thread(target=paul, args=())
+#x.start()
 
 if (display_list):
 	root=tkinter.Tk()

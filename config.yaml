@@ -1,0 +1,8 @@
+mqtt:
+  server: 10.1.1.2
+  port: 58886
+  user: smarties
+  pass: 4utomatem3
+  publish_topic: paul/status/
+  subscribe_topic: paul/in/
+  keepalive: 60
